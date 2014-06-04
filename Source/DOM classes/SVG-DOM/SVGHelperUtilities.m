@@ -302,6 +302,8 @@
 		
 		NSString* actualOpacity = [stylableElement cascadedValueForStylableProperty:@"opacity"];
 		layer.opacity = actualOpacity.length > 0 ? [actualOpacity floatValue] : 1.0f; // svg's "opacity" defaults to 1!
+        NSString *display = [stylableElement cascadedValueForStylableProperty:@"display"];
+        layer.hidden = (display.length > 0 && [display hasPrefix:@"none"]);
 	}
 }
 
@@ -455,9 +457,6 @@
 	{
 		
 	}
-    
-    NSString *display = [svgElement cascadedValueForStylableProperty:@"display"];
-    _shapeLayer.hidden = [display hasPrefix:@"none"];
     
 	NSString* actualOpacity = [svgElement cascadedValueForStylableProperty:@"opacity"];
 	_shapeLayer.opacity = actualOpacity.length > 0 ? [actualOpacity floatValue] : 1; // unusually, the "opacity" attribute defaults to 1, not 0
