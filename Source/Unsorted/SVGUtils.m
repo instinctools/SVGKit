@@ -264,7 +264,8 @@ SVGColor SVGColorMake (uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 typedef enum {
 	PhaseNone = 0,
-	PhaseRGB
+	PhaseRGB,
+    PhaseRGBA
 } Phase;
 
 SVGColor SVGColorFromString (const char *string) {
@@ -272,10 +273,10 @@ SVGColor SVGColorFromString (const char *string) {
 	SVGColor color;
 	bzero(&color, sizeof(color));
 	
-	color.a = 0xFF;
-	
 	if (!strncmp(string, "rgb(", 4)) {
 		size_t len = strlen(string);
+        
+        color.a = 0xFF;
 		
 		char accum[MAX_ACCUM];
 		bzero(accum, MAX_ACCUM);
@@ -325,8 +326,67 @@ SVGColor SVGColorFromString (const char *string) {
 			accum[accumIdx++] = c;
 		}
 	}
+    else if (!strncmp(string, "rgba(", 5)) {
+		size_t len = strlen(string);
+		
+		char accum[MAX_ACCUM];
+		bzero(accum, MAX_ACCUM);
+		
+		int accumIdx = 0, currComponent = 0;
+		Phase phase = PhaseNone;
+		
+		for (size_t n = 0; n < len; n++) {
+			char c = string[n];
+			
+			if (c == '\n' || c == '\t' || c == ' ') {
+				continue;
+			}
+			
+			if (!strcmp(accum, "rgba")) {
+				phase = PhaseRGBA;
+			}
+			
+			if (phase == PhaseRGBA) {
+				if (c == '(') {
+					bzero(accum, MAX_ACCUM);
+					accumIdx = 0;
+					
+					continue;
+				}
+				else if (c == ',') {
+					if (currComponent == 0) {
+						color.r = atoi(accum);
+						currComponent++;
+					}
+					else if (currComponent == 1) {
+						color.g = atoi(accum);
+						currComponent++;
+					}
+                    else if (currComponent == 2) {
+						color.b = atoi(accum);
+						currComponent++;
+					}
+					
+					bzero(accum, MAX_ACCUM);
+					accumIdx = 0;
+					
+					continue;
+				}
+				else if (c == ')' && currComponent == 3) {
+                    float f = atof(accum);
+                    // Convert alpha value 0.0 .. 1.0 to 0 .. 255
+					color.a = floor(f == 1.0 ? 255 : f * 256);
+					break;
+				}
+			}
+			
+			accum[accumIdx++] = c;
+		}
+	}
 	else if (!strncmp(string, "#", 1)) {
 		const char *hexString = string + 1;
+        
+        color.a = 0xFF;
 		
 		if (strlen(hexString) == 6)
 		{
