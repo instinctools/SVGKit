@@ -29,7 +29,7 @@
 	
 	CGAffineTransform currentRelativeTransform;
 	CGAffineTransform optionalViewportTransform;
-		
+    
 	/**
 	 Current relative transform: for an incoming "SVGTransformable" it's .transform, for everything else its identity
 	 */
@@ -54,7 +54,7 @@
 		/**
 		 Calculate the "implicit" viewport->viewbox transform (caused by the <SVG> tag's possible "viewBox" attribute)
 		 Also calculate the "implicit" realViewport -> svgDefaultViewport transform (caused by the user changing the external
-		    size of the rendered SVG)
+         size of the rendered SVG)
 		 */
 		SVGRect frameViewBox = svgSVGElement.viewBox; // the ACTUAL viewbox (may be Uninitalized if none specified in SVG file)
 		SVGRect frameActualViewport = svgSVGElement.viewport; // the ACTUAL viewport (dictated by the graphics engine; may be Uninitialized if the renderer has too little info to decide on a viewport at all!)
@@ -72,7 +72,7 @@
 		{
 			CGAffineTransform transformRealViewportToSVGViewport;
 			CGAffineTransform transformSVGViewportToSVGViewBox;
-		
+            
 			/** Transform part 1: from REAL viewport to EXPECTED viewport */
 			SVGRect viewportForViewBoxToRelateTo;
 			if( SVGRectIsInitialized( frameRequestedViewport ))
@@ -206,7 +206,7 @@
 						
 						scaleToViewBox = CGAffineTransformConcat( transformsThatHonourAspectRatioRequirements, scaleToViewBox );
 					}
-				}	
+				}
 				else
 					DDLogWarn( @"Unsupported: preserveAspectRatio set to SLICE. Code to handle this doesn't exist yet.");
 				
@@ -235,8 +235,8 @@
  Re-calculates the absolute transform on-demand by querying parent's absolute transform and appending self's relative transform.
  
  Can take ONLY TWO kinds of element:
-  - something that implements SVGTransformable (non-transformables shouldn't be performing transforms!)
-  - something that defines a new viewport co-ordinate system (i.e. the SVG tag itself; this is AN IMPLICIT TRANSFORMABLE!)
+ - something that implements SVGTransformable (non-transformables shouldn't be performing transforms!)
+ - something that defines a new viewport co-ordinate system (i.e. the SVG tag itself; this is AN IMPLICIT TRANSFORMABLE!)
  */
 +(CGAffineTransform) transformAbsoluteIncludingViewportForTransformableOrViewportEstablishingElement:(SVGElement*) transformableOrSVGSVGElement
 {
@@ -269,7 +269,7 @@
 			break;
 		}
 	}
-		
+    
 	/**
 	 TOTAL absolute based on the parent transform with relative (and possible viewport) transforms
 	 */
@@ -288,7 +288,7 @@
 #if FORCE_RASTERIZE_LAYERS
 	if ([layer respondsToSelector:@selector(setShouldRasterize:)]) {
 		[layer performSelector:@selector(setShouldRasterize:)
-						  withObject:[NSNumber numberWithBool:YES]];
+                    withObject:[NSNumber numberWithBool:YES]];
 	}
 	
 	/** If you're going to rasterize, Apple's code is dumb, and needs to be "told" if its using a Retina display */
@@ -320,7 +320,7 @@
     //BIZARRE: Apple sometimes gives a different value for this even when transformAbsolute == identity! : CGRect localPathBB = CGPathGetPathBoundingBox( _pathRelative );
 	//DEBUG ONLY: CGRect unTransformedPathBB = CGPathGetBoundingBox( _pathRelative );
 	CGRect transformedPathBB = CGPathGetBoundingBox( pathToPlaceInLayer );
-
+    
 #if IMPROVE_PERFORMANCE_BY_WORKING_AROUND_APPLE_FRAME_ALIGNMENT_BUG
 	transformedPathBB = CGRectIntegral( transformedPathBB ); // ridiculous but improves performance of apple's code by up to 50% !
 #endif
@@ -455,6 +455,9 @@
 	{
 		
 	}
+    
+    NSString *display = [svgElement cascadedValueForStylableProperty:@"display"];
+    _shapeLayer.hidden = [display hasPrefix:@"none"];
     
 	NSString* actualOpacity = [svgElement cascadedValueForStylableProperty:@"opacity"];
 	_shapeLayer.opacity = actualOpacity.length > 0 ? [actualOpacity floatValue] : 1; // unusually, the "opacity" attribute defaults to 1, not 0
