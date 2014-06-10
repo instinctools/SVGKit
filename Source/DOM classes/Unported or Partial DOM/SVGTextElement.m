@@ -146,6 +146,10 @@
     label.alignmentMode = kCAAlignmentLeft;
     label.foregroundColor = [UIColor blackColor].CGColor;
 
+    CGSize scaledSize = CGSizeApplyAffineTransform(CGSizeMake(1.0, 0), textTransformAbsoluteWithLocalPositionOffset);
+    float scaleRatio = hypotf(scaledSize.width, scaledSize.height);
+    label.contentsScale = scaleRatio;
+
 	/** VERY USEFUL when trying to debug text issues:
 	label.backgroundColor = [UIColor colorWithRed:0.5 green:0 blue:0 alpha:0.5].CGColor;
 	label.borderColor = [UIColor redColor].CGColor;
