@@ -130,7 +130,16 @@
 	
 	label.position = CGPointMake( 0,
 								 0 + CGSizeApplyAffineTransform( fakeSizeToApplyNonTranslatingPartsOfTransform, textTransformAbsoluteWithLocalPositionOffset).height);
-	label.anchorPoint = CGPointZero; // WARNING: SVG applies transforms around the top-left as origin, whereas Apple defaults to center as origin, so we tell Apple to work "like SVG" here.
+    
+    NSString* textAnchor = [self cascadedValueForStylableProperty:@"text-anchor"];
+    if (textAnchor && [textAnchor isEqualToString:@"middle"]) {
+        label.anchorPoint = CGPointMake(0.5, 0);
+    } else if (textAnchor && [textAnchor isEqualToString:@"end"]) {
+        label.anchorPoint = CGPointMake(1.0, 0);
+    } else {
+        label.anchorPoint = CGPointZero; // WARNING: SVG applies transforms around the top-left as origin, whereas Apple defaults to center as origin, so we tell Apple to work "like SVG" here.
+    }
+    
 	label.affineTransform = textTransformAbsoluteWithLocalPositionOffset;
 	label.fontSize = effectiveFontSize;
     label.string = effectiveText;
