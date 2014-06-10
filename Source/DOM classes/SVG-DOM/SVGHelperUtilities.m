@@ -359,7 +359,7 @@
 		 */
 		CGSize fakeSize = CGSizeMake( strokeWidth, 0 );
 		fakeSize = CGSizeApplyAffineTransform( fakeSize, transformAbsolute );
-		_shapeLayer.lineWidth = strokeWidth;
+        _shapeLayer.lineWidth = hypotf(fakeSize.width, fakeSize.height);
 		
 		SVGColor strokeColorAsSVGColor = SVGColorFromString([actualStroke UTF8String]); // have to use the intermediate of an SVGColor so that we can over-ride the ALPHA component in next line
 		NSString* actualStrokeOpacity = [svgElement cascadedValueForStylableProperty:@"stroke-opacity"];
