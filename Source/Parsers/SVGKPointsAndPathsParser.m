@@ -767,4 +767,164 @@ inline BOOL SVGCurveEqualToCurve(SVGCurve curve1, SVGCurve curve2)
     return origin;
 }
 
+/**
+ elliptical-arc:
+ ( "A" | "a" ) wsp* elliptical-arc-argument-sequence
+ */
++ (SVGCurve) readEllipticalArcCommand:(NSScanner*)scanner path:(CGMutablePathRef)path relativeTo:(CGPoint)origin isRelative:(BOOL) isRelative
+{
+#if VERBOSE_PARSE_SVG_COMMAND_STRINGS
+	DDLogVerbose(@"Parsing command string: elliptical-arc command");
+#endif
+    NSString* cmd = nil;
+    NSCharacterSet* cmdFormat = [NSCharacterSet characterSetWithCharactersInString:@"Aa"];
+    
+	if( ! [scanner scanCharactersFromSet:cmdFormat intoString:&cmd])
+	{
+		NSAssert( FALSE, @"failed to scan elliptical-arc command");
+		return SVGCurveZero;
+	}
+	
+    [SVGKPointsAndPathsParser readWhitespace:scanner];
+    
+    SVGCurve lastCurve = [SVGKPointsAndPathsParser readEllipticalArcArgumentSequence:scanner path:path relativeTo:origin isRelative:isRelative];
+    return lastCurve;
+}
+
+#define D_PI 2.0 * M_PI
+
+/**
+ elliptical-arc-argument-sequence:
+ elliptical-arc-argument
+ | elliptical-arc-argument comma-wsp? elliptical-arc-argument-sequence
+ */
++ (SVGCurve) readEllipticalArcArgumentSequence:(NSScanner*)scanner path:(CGMutablePathRef)path relativeTo:(CGPoint)origin isRelative:(BOOL) isRelative
+{
+	SVGCurve curve = [SVGKPointsAndPathsParser readEllipticalArcArgument:scanner path:path relativeTo:origin isRelative:isRelative];
+    
+	while( ![scanner isAtEnd])
+	{
+		//CGPoint newOrigin = isRelative ? curve.p : origin;
+		
+        //curve = [SVGKPointsAndPathsParser readEllipticalArcArgument:scanner path:path relativeTo:newOrigin];
+    }
+	
+    return curve;
+}
+
++ (SVGCurve) readEllipticalArcArgument:(NSScanner*)scanner path:(CGMutablePathRef)path relativeTo:(CGPoint)origin isRelative:(BOOL)isRelative
+{
+	SVGCurve curveResult;
+    
+    CGPoint radius = [SVGKPointsAndPathsParser readCoordinatePair:scanner];
+    [SVGKPointsAndPathsParser readCommaAndWhitespace:scanner];
+    
+    CGFloat angle;
+    [SVGKPointsAndPathsParser readCoordinate:scanner intoFloat:&angle];
+    [SVGKPointsAndPathsParser readCommaAndWhitespace:scanner];
+    
+    CGPoint largeAndSweep = [SVGKPointsAndPathsParser readCoordinatePair:scanner];
+    [SVGKPointsAndPathsParser readCommaAndWhitespace:scanner];
+    
+    CGPoint endPoint = [SVGKPointsAndPathsParser readCoordinatePair:scanner];
+    curveResult.p = endPoint;
+    [SVGKPointsAndPathsParser readCommaAndWhitespace:scanner];
+    
+    CGPoint start = origin;
+    CGPoint end = isRelative ? CGPointMake(origin.x + endPoint.x, origin.x + endPoint.y) : endPoint;
+    
+    CGFloat large = largeAndSweep.x;
+    CGFloat sweep = largeAndSweep.y;
+    
+    if (CGPointEqualToPoint(start, end)) {
+        return curveResult;
+    }
+    
+    if (radius.x == 0.0 && radius.y == 0.0) {
+        CGPathAddLineToPoint(path, nil, end.x, end.y);
+        return curveResult;
+    }
+    
+    CGFloat sinPhi = sinf(angle * D_PI);
+    CGFloat cosPhi = cosf(angle * D_PI);
+    
+    CGFloat x1dash = cosPhi * (start.x - end.x) / 2.0 + sinPhi * (start.y - end.y) / 2.0;
+    CGFloat y1dash = -sinPhi * (start.x - end.x) / 2.0 + cosPhi * (start.y - end.y) / 2.0;
+    
+    CGFloat numerator = radius.x * radius.x * radius.y * radius.y - radius.x * radius.x * y1dash * y1dash - radius.y * radius.y * x1dash * x1dash;
+    
+    CGFloat rx = radius.x;
+    CGFloat ry = radius.y;
+    
+    CGFloat root;
+    if (numerator < 0.0) {
+        CGFloat s = sqrt(1.0 - numerator / (rx * rx * ry * ry));
+        rx *= s;
+        ry *= s;
+        root = 0.0;
+    } else {
+        CGFloat coef = ((large == 1 && sweep == 1) || (large == 0 && sweep == 0) ? -1.0 : 1.0);
+        root = coef * sqrt(numerator / (radius.x * radius.x * y1dash * y1dash + radius.y * radius.y * x1dash * x1dash));
+    }
+    
+    CGFloat cxdash =  root * rx * y1dash / ry;
+    CGFloat cydash = -root * ry * x1dash / rx;
+    
+    CGFloat cx = cosPhi * cxdash - sinPhi * cydash + (start.x + end.x) / 2.0;
+    CGFloat cy = sinPhi * cxdash + cosPhi * cydash + (start.y + end.y) / 2.0;
+    
+    CGFloat theta1 = [self calculateVectorAngleUx:1.0 uy:0.0 vx:(x1dash - cxdash) / rx vy:(y1dash - cydash) / ry];
+    CGFloat dtheta = [self calculateVectorAngleUx:(x1dash - cxdash) / rx uy:(y1dash - cydash) / ry vx:(-x1dash - cxdash) / rx vy:(-y1dash - cydash) / ry];
+    
+    if (sweep == 0 && dtheta > 0) {
+        dtheta -= D_PI;
+    } else if (sweep == 1 && dtheta < 0) {
+        dtheta += D_PI;
+    }
+    
+    CGFloat segments = ceilf(fabs(dtheta / M_PI_2));
+    CGFloat delta = dtheta / segments;
+    CGFloat t = 8.0 / 3.0 * sinf(delta / 4.0) * sinf(delta / 4.0) / sinf(delta / 2.0);
+    
+    CGFloat startX = start.x;
+    CGFloat startY = start.y;
+    
+    for (CGFloat i = 0.0; i < segments; ++i) {
+        CGFloat cosTheta1 = cosf(theta1);
+        CGFloat sinTheta1 = sinf(theta1);
+        CGFloat theta2 = theta1 + delta;
+        CGFloat cosTheta2 = cosf(theta2);
+        CGFloat sinTheta2 = sinf(theta2);
+        
+        CGFloat endpointX = cosPhi * rx * cosTheta2 - sinPhi * ry * sinTheta2 + cx;
+        CGFloat endpointY = sinPhi * rx * cosTheta2 + cosPhi * ry * sinTheta2 + cy;
+        
+        CGFloat dx1 = t * (-cosPhi * rx * sinTheta1 - sinPhi * ry * cosTheta1);
+        CGFloat dy1 = t * (-sinPhi * rx * sinTheta1 + cosPhi * ry * cosTheta1);
+        
+        CGFloat dxe = t * (cosPhi * rx * sinTheta2 + sinPhi * ry * cosTheta2);
+        CGFloat dye = t * (sinPhi * rx * sinTheta2 - cosPhi * ry * cosTheta2);
+        
+        CGPathAddCurveToPoint(path, NULL, startX + dx1, startY + dy1, endpointX + dxe, endpointY + dye, endpointX, endpointY);
+        
+        theta1 = theta2;
+        startX = endpointX;
+        startY = endpointY;
+    }
+    
+    return curveResult;
+}
+
++ (CGFloat)calculateVectorAngleUx:(CGFloat)ux uy:(CGFloat)uy vx:(CGFloat)vx vy:(CGFloat)vy
+{
+    CGFloat ta = atan2f(uy, ux);
+    CGFloat tb = atan2f(vy, vx);
+    
+    if (tb >= ta) {
+        return tb - ta;
+    }
+    
+    return D_PI - (ta - tb);
+}
+
 @end
