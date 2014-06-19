@@ -19,7 +19,8 @@
 }
 
 - (void)layoutLayer:(CALayer *)layer {
-	
+#warning for CATextLayer sublayers this method crops its parent layer frame
+    return;
     // null rect union any other rect will return the other rect
 	CGRect mainRect = CGRectNull;
 	

@@ -128,7 +128,7 @@
 	CGFloat offsetToConvertSVGOriginToAppleOrigin = - suggestedUntransformedSize.height;
 	CGSize fakeSizeToApplyNonTranslatingPartsOfTransform = CGSizeMake( 0, offsetToConvertSVGOriginToAppleOrigin);
 	
-	label.position = CGPointMake( 0,
+	label.position = CGPointMake( 0 + CGSizeApplyAffineTransform( fakeSizeToApplyNonTranslatingPartsOfTransform, textTransformAbsoluteWithLocalPositionOffset).width,
 								 0 + CGSizeApplyAffineTransform( fakeSizeToApplyNonTranslatingPartsOfTransform, textTransformAbsoluteWithLocalPositionOffset).height);
     
     NSString* textAnchor = [self cascadedValueForStylableProperty:@"text-anchor"];
@@ -148,7 +148,7 @@
 
     CGSize scaledSize = CGSizeApplyAffineTransform(CGSizeMake(1.0, 0), textTransformAbsoluteWithLocalPositionOffset);
     float scaleRatio = hypotf(scaledSize.width, scaledSize.height);
-    label.contentsScale = scaleRatio * [[UIScreen mainScreen] scale];
+    label.contentsScale = scaleRatio * [[UIScreen mainScreen] scale] * 1.44; //1.44 is just a "magic" number, you can increase or decrease final text scale changing this const
 
 	/** VERY USEFUL when trying to debug text issues:
 	label.backgroundColor = [UIColor colorWithRed:0.5 green:0 blue:0 alpha:0.5].CGColor;
