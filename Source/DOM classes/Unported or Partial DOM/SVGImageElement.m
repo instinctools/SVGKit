@@ -83,12 +83,12 @@ CGImageRef SVGImageCGImage(SVGImageRef img)
 	
 	NSData *imageData = [NSData dataWithContentsOfURL:[NSURL URLWithString:_href]];
 	SVGImageRef image = [SVGImage imageWithData:imageData];
-	
+	newLayer.contentsGravity = kCAGravityResizeAspect;
 	newLayer.contents = (id)SVGImageCGImage(image);
 		
 #if OLD_CODE
 	__block CALayer *layer = [[CALayer layer] retain];
-
+    
 	layer.name = self.identifier;
 	[layer setValue:self.identifier forKey:kSVGElementIdentifier];
 	
