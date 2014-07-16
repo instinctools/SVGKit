@@ -51,8 +51,13 @@
 	 */
 	NSString* actualSize = [self cascadedValueForStylableProperty:@"font-size"];
 	NSString* actualFamily = [self cascadedValueForStylableProperty:@"font-family"];
-	
+    NSString* dy = [self cascadedValueForStylableProperty:@"dy"];
+    NSString *y = [self cascadedValueForStylableProperty:@"y"];
+    
 	CGFloat effectiveFontSize = (actualSize.length > 0) ? [actualSize floatValue] : 12; // I chose 12. I couldn't find an official "default" value in the SVG spec.
+    CGFloat delta_y = dy.length > 0 ? [dy floatValue] : 0;
+    delta_y = delta_y * effectiveFontSize;
+    CGFloat initial_y = y.length > 0 ? [y floatValue] : 0.0f;
 	/** Convert the size down using the SVG transform at this point, before we calc the frame size etc */
 //	effectiveFontSize = CGSizeApplyAffineTransform( CGSizeMake(0,effectiveFontSize), textTransformAbsolute ).height; // NB important that we apply a transform to a "CGSize" here, so that Apple's library handles worrying about whether to ignore skew transforms etc
 	
@@ -125,7 +130,7 @@
 	 
 	 If/when Apple fixes their bugs - or if you know enough about their API's to workaround the bugs, feel free to fix this code.
 	 */
-	CGFloat offsetToConvertSVGOriginToAppleOrigin = - suggestedUntransformedSize.height;
+	CGFloat offsetToConvertSVGOriginToAppleOrigin = - suggestedUntransformedSize.height + delta_y + initial_y;
 	CGSize fakeSizeToApplyNonTranslatingPartsOfTransform = CGSizeMake( 0, offsetToConvertSVGOriginToAppleOrigin);
 	
 	label.position = CGPointMake( 0 + CGSizeApplyAffineTransform( fakeSizeToApplyNonTranslatingPartsOfTransform, textTransformAbsoluteWithLocalPositionOffset).width,
