@@ -335,7 +335,7 @@ SVGKParser* getCurrentlyParsingParser()
 
 - (NSString *)stringFromSource:(SVGKSource *) src
 {
-    static uint8_t byteBuffer[4096];
+    uint8_t byteBuffer[4096];
     NSInteger bytesRead;
     NSString *result = nil;
     do
