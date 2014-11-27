@@ -154,7 +154,7 @@
     label.alignmentMode = kCAAlignmentLeft;
     
     label.foregroundColor = [SVGHelperUtilities parseFillForElement:self];
-
+    
 
     CGSize scaledSize = CGSizeApplyAffineTransform(CGSizeMake(1.0, 0), textTransformAbsoluteWithLocalPositionOffset);
     float scaleRatio = hypotf(scaledSize.width, scaledSize.height);
