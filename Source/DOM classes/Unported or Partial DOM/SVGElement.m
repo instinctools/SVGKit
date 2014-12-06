@@ -1,3 +1,4 @@
+
 //
 //  SVGElement.m
 //  SVGKit
@@ -425,6 +426,9 @@
         unichar c = [selectorText characterAtIndex:i];
         if( [selectorStart characterIsMember:c] )
         {
+            if (start != -1) {
+                break;
+            }
             start = i;
         }
         else if( [alphaNum characterIsMember:c] )
@@ -447,12 +451,30 @@
 
 - (BOOL) selector:(NSString *)selector appliesTo:(SVGElement *) element
 {
-    if( [selector characterAtIndex:0] == '.' )
-        return element.className != nil && [element.className isEqualToString:[selector substringFromIndex:1]];
-    else if( [selector characterAtIndex:0] == '#' )
+    if( [selector characterAtIndex:0] == '.' ) {
+        
+        if (element.className == nil) {
+            return NO;
+        }
+        NSArray *classNamesArray = [element.className componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        classNamesArray = [classNamesArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF != ''"]];
+        
+        NSString* selectorClassName = [selector substringFromIndex:1];
+        
+        for (NSString* localClassName in classNamesArray) {
+            if (localClassName != nil) {
+                if ([localClassName isEqualToString:selectorClassName]){
+                    return YES;
+                }
+            }
+        }
+        
+        return NO;
+    } else if( [selector characterAtIndex:0] == '#' ) {
         return element.identifier != nil && [element.identifier isEqualToString:[selector substringFromIndex:1]];
-    else
+    } else {
         return element.nodeName != nil && [element.nodeName isEqualToString:selector];
+    }
 }
 
 - (BOOL) styleRule:(CSSStyleRule *) styleRule appliesTo:(SVGElement *) element
@@ -501,6 +523,9 @@
             
             @autoreleasepool /** DOM / CSS is insanely verbose, so this is likely to generate a lot of crud objects */
             {
+                NSArray* specificity = nil;
+                NSString* value = nil;
+
                 for( StyleSheet* genericSheet in self.rootOfCurrentDocumentFragment.styleSheets.internalArray ) // because it's far too much effort to use CSS's low-quality iteration here...
                 {
                     if( [genericSheet isKindOfClass:[CSSStyleSheet class]])
@@ -513,12 +538,27 @@
                             {
                                 CSSStyleRule* styleRule = (CSSStyleRule*) genericRule;
                                 
-                                if( [self styleRule:styleRule appliesTo:self] )
+                                if( [self styleRule:styleRule appliesTo:self])
                                 {
-                                    return [styleRule.style getPropertyValue:stylableProperty];
+                                    NSString* currentValue = [styleRule.style getPropertyValue:stylableProperty];
+                                    if (currentValue != nil) {
+                                        
+                                        NSArray* currentSpecificity = [self specificity:styleRule.selectorText];
+                                        
+                                        if ([self compareSpecificity:specificity with:currentSpecificity] == NSOrderedAscending) {
+                                            specificity = currentSpecificity;
+                                            value = currentValue;
+                                        }
+                                        
+                                    }
                                 }
                             }
                         }
+                    }
+                    
+                    if (value != nil) {
+                        
+                        return value;
                     }
                 }
 			}
@@ -546,6 +586,59 @@
 			}
 		}
 	}
+}
+
+
+-(NSComparisonResult) compareSpecificity:(NSArray*) left with:(NSArray*) right {
+    if (left == nil) {
+        if (right == nil) {
+            return NSOrderedSame;
+        }
+        return NSOrderedAscending;
+    }
+    
+    if (left.count != 4 || right.count != 4) {
+        return NSOrderedAscending;
+    }
+    
+    for (NSUInteger i = 0; i < 4; ++i) {
+        NSNumber* leftComponent = [left objectAtIndex:i];
+        NSNumber* rightComponent = [right objectAtIndex:i];
+        
+        NSComparisonResult localResult = [leftComponent compare:rightComponent];
+        
+        if (localResult != NSOrderedSame) {
+            return localResult;
+        }
+    }
+    
+    
+    return NSOrderedSame;
+}
+
+- (NSArray*) specificity:(NSString*) selectorText {
+    NSNumber* a = [NSNumber numberWithInt:0]; // from node property (not counted here)
+    NSNumber* b = [NSNumber numberWithInt:0];
+    NSNumber* c = [NSNumber numberWithInt:0];
+    NSNumber* d = [NSNumber numberWithInt:0];
+    
+    NSRange nextRule = [self nextSelectorRangeFromText:selectorText startFrom:NSMakeRange(0, 0)];
+    
+    while (nextRule.location != NSNotFound) {
+        NSString* subRule = [selectorText substringWithRange:nextRule];
+        
+        if([subRule characterAtIndex:0] == '.') {
+            c = @(c.intValue + 1);
+        } else if ([subRule characterAtIndex:0] == '#') {
+            b = @(b.intValue + 1);
+        } else {
+            d = @(d.intValue + 1);
+        }
+        
+        nextRule = [self nextSelectorRangeFromText:selectorText startFrom:nextRule];
+    }
+    
+    return [NSArray arrayWithObjects:a, b, c, d, nil];
 }
 
 @end
