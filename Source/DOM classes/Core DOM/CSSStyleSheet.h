@@ -15,11 +15,27 @@
 #import "CSSRule.h"
 #import "CSSRuleList.h"
 
+
+@interface SVGMutableMultiDictionary : NSObject
+
+- (void) addValue:(id)value forKey:(NSString*) key;
+
+- (NSArray*) valuesForKey:(NSString*) key;
+
+@end
+
+
 @interface CSSStyleSheet : NSObject
 
 
 @property(nonatomic,retain) CSSRule* ownerRule;
 @property(nonatomic,retain) CSSRuleList* cssRules;
+
+
+@property(nonatomic,retain) SVGMutableMultiDictionary* classToRulesCache;
+@property(nonatomic,retain) SVGMutableMultiDictionary* idToRulesCache;
+@property(nonatomic,retain) SVGMutableMultiDictionary* tagnameToRulesCache;
+
 
 -(long) insertRule:(NSString*) rule index:(unsigned long) index;
 -(void) deleteRule:(unsigned long) index;

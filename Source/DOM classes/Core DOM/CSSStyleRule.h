@@ -14,11 +14,19 @@
 
 @interface CSSStyleRule : CSSRule
 
-@property(nonatomic,retain) NSString* selectorText;
-@property(nonatomic,retain) CSSStyleDeclaration* style;
+@property(nonatomic, retain) NSString* selectorText;
+@property(nonatomic, retain) CSSStyleDeclaration* style;
+
+
 
 #pragma mark - methods needed for ObjectiveC implementation
 
 - (id)initWithSelectorText:(NSString*) selector styleText:(NSString*) styleText;
+
+- (NSComparisonResult)compare:(CSSStyleRule*)otherObject;
+
+-(NSArray*) selectorClasses;
+-(NSArray*) selectorIds;
+-(NSArray*) selectorTagnames;
 
 @end

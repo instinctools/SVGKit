@@ -4,14 +4,63 @@
 
 #import "CSSStyleRule.h"
 
+@interface SVGMutableMultiDictionary ()
+@property (nonatomic, retain) NSMutableDictionary* keyToArray;
+@end
+
+@implementation SVGMutableMultiDictionary
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _keyToArray = [[NSMutableDictionary alloc] init];
+    }
+    return self;
+}
+
+-(void) dealloc {
+    [_keyToArray release];
+    [super dealloc];
+}
+
+-(void)addValue:(id)value forKey:(NSString *)key {
+    NSMutableArray* values = [_keyToArray valueForKey:key];
+    
+    if (values == nil) {
+        values = [[[NSMutableArray alloc] init] autorelease];
+        [_keyToArray setObject:values forKey:key];
+    }
+    
+    [values addObject:value];
+}
+
+-(NSArray *)valuesForKey:(NSString *)key {
+    NSMutableArray* arrayFromLocalMap = [_keyToArray valueForKey:key];
+    return [NSArray arrayWithArray:arrayFromLocalMap];
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"%@", _keyToArray];
+}
+
+@end
+
+
+
 @implementation CSSStyleSheet
 
 @synthesize ownerRule;
 @synthesize cssRules;
 
+@synthesize classToRulesCache, idToRulesCache, tagnameToRulesCache;
+
 - (void)dealloc {
     self.ownerRule = nil;
     self.cssRules = nil;
+    self.classToRulesCache = nil;
+    self.idToRulesCache = nil;
+    self.tagnameToRulesCache = nil;
     [super dealloc];
 }
 
@@ -43,7 +92,9 @@
 	if( [stringSplitContainer count] >= 2 ) //not necessary unless using shitty svgs
 	{
 		CSSStyleRule* newRule = [[[CSSStyleRule alloc] initWithSelectorText:[stringSplitContainer objectAtIndex:0] styleText:[stringSplitContainer objectAtIndex:1]] autorelease];
-		
+        
+        [self addRuleToCaches:newRule];
+        
 		[self.cssRules.internalArray insertObject:newRule atIndex:index-1]; // CSS says you insert "BEFORE" the index, which is the opposite of most C-based programming languages
 		
 		return index-1;
@@ -53,6 +104,20 @@
 	
 	
 	return -1; // failed, assert fired!
+}
+
+-(void) addRuleToCaches:(CSSStyleRule*) rule {
+    for (NSString* selectorClassName in  rule.selectorClasses) {
+        [self.classToRulesCache addValue:rule forKey:selectorClassName];
+    }
+    
+    for (NSString* selectorIdentifier in rule.selectorIds) {
+        [self.classToRulesCache addValue:rule forKey:selectorIdentifier];
+    }
+    
+    for (NSString* selectorTagName in rule.selectorTagnames) {
+        [self.classToRulesCache addValue:rule forKey:selectorTagName];
+    }
 }
 
 -(void)deleteRule:(unsigned long)index
@@ -68,6 +133,11 @@
     if (self)
 	{
 		self.cssRules = [[[CSSRuleList alloc]init] autorelease];
+        
+        self.classToRulesCache = [[[SVGMutableMultiDictionary alloc] init]autorelease];
+        self.idToRulesCache = [[[SVGMutableMultiDictionary alloc] init]autorelease];
+        self.tagnameToRulesCache = [[[SVGMutableMultiDictionary alloc] init]autorelease];
+        
 		@autoreleasepool { //creating lots of autoreleased strings, not helpful for older devices
 			
 			/**
