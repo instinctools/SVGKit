@@ -476,7 +476,7 @@
                     for (CSSStyleRule* styleRule in appliableRules) {
                         NSString* currentValue = [styleRule.style getPropertyValue:stylableProperty];
                         if (currentValue != nil) {
-                            if ([prevStyleRule compare:styleRule] == NSOrderedAscending) {
+                            if (prevStyleRule == nil || [prevStyleRule compare:styleRule] == NSOrderedAscending) {
                                 prevStyleRule = styleRule;
                                 value = currentValue;
                             }
