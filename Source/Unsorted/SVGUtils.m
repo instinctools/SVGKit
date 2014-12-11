@@ -432,6 +432,88 @@ SVGColor SVGColorFromString (const char *string) {
 	return color;
 }
 
+
+
+BOOL isOpacitySetted (const char *string) {
+    NSCAssert(string != NULL, @"NullPointerException: you gave us a null pointer, very bad thing to do...");
+    
+    if (!strncmp(string, "rgb(", 4)) {
+        return FALSE;
+    }
+    else if (!strncmp(string, "rgba(", 5)) {
+        size_t len = strlen(string);
+        
+        char accum[MAX_ACCUM];
+        bzero(accum, MAX_ACCUM);
+        
+        int accumIdx = 0, currComponent = 0;
+        Phase phase = PhaseNone;
+        
+        for (size_t n = 0; n < len; n++) {
+            char c = string[n];
+            
+            if (c == '\n' || c == '\t' || c == ' ') {
+                continue;
+            }
+            
+            if (!strcmp(accum, "rgba")) {
+                phase = PhaseRGBA;
+            }
+            
+            if (phase == PhaseRGBA) {
+                if (c == '(') {
+                    bzero(accum, MAX_ACCUM);
+                    accumIdx = 0;
+                    
+                    continue;
+                }
+                else if (c == ',') {
+                    if (currComponent == 0) {
+                        currComponent++;
+                    }
+                    else if (currComponent == 1) {
+                        currComponent++;
+                    }
+                    else if (currComponent == 2) {
+                        currComponent++;
+                    }
+                    
+                    bzero(accum, MAX_ACCUM);
+                    accumIdx = 0;
+                    
+                    continue;
+                }
+                else if (c == ')' && currComponent == 3) {
+                    return TRUE;
+                }
+            }
+            
+            accum[accumIdx++] = c;
+        }
+        
+        return FALSE;
+    } else if (!strncmp(string, "#", 1)) {
+        const char *hexString = string + 1;
+        
+        
+        if (strlen(hexString) == 6) {
+            return FALSE;
+        } else if (strlen(hexString) == 3) {
+            return FALSE;
+        } else if (strlen(hexString) == 4) {
+            return TRUE;
+        } else if (strlen(hexString) == 8) {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
+    } else {
+        return FALSE;
+    }
+    
+    return FALSE;
+}
+
 CGFloat SVGPercentageFromString (const char *string) {
 	size_t len = strlen(string);
 	

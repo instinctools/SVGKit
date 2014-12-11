@@ -448,8 +448,9 @@
 		SVGColorFromString([actualFill UTF8String]) // have to use the intermediate of an SVGColor so that we can over-ride the ALPHA component in next line
 		: SVGColorMake(0, 0, 0, 0);
 		
-        if( actualFillOpacity.length > 0 )
+        if( actualFillOpacity.length > 0 && !isOpacitySetted([actualFill UTF8String])) {
             fillColorAsSVGColor.a = (uint8_t) ([actualFillOpacity floatValue] * 0xFF);
+        }
 		
         _shapeLayer.fillColor = CGColorWithSVGColor(fillColorAsSVGColor);
 	}
