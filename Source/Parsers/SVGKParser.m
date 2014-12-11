@@ -104,7 +104,7 @@ SVGKParser* getCurrentlyParsingParser()
 		self.parserExtensions = [NSMutableArray array];
 		
 		self.source = s;
-        self.externalStylesheets = nil;
+        self.externalStylesheets = [[[NSMutableArray alloc] init] autorelease];
 		
 		_storedChars = [NSMutableString new];
 		_stackOfParserExtensions = [NSMutableArray new];
