@@ -459,7 +459,7 @@
     if ([stylingProperties containsObject:stylableProperty]) {
         NSString* valueFromStyle = [self cascadedValueForStylablePropertyFromStyle:stylableProperty];
         
-        if (valueFromStyle != nil) {
+        if (valueFromStyle != nil && ![valueFromStyle isEqualToString:@""]) {
             return valueFromStyle;
         } else {
             return [self getAttribute:stylableProperty];
