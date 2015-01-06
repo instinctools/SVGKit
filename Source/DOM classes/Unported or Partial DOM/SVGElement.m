@@ -430,87 +430,138 @@
 	 
 	 ********* WAWRNING: THE CURRENT IMPLEMENTATION BELOW IS VEYR MUCH INCOMPLETE, BUT IT WORKS FOR VERY SIMPLE SVG'S ************
 	 */
-    if ([self hasAttribute:stylableProperty]) {
-		return [self getAttribute:stylableProperty];
-    } else {
-		NSString* localStyleValue = [self.style getPropertyValue:stylableProperty];
-		
-        if (localStyleValue != nil) {
-			return localStyleValue;
+    
+    NSSet* stylingProperties = [NSSet setWithObjects: @"font",
+                                  @"font-family", @"font-size", @"font-size-adjust",
+                                  @"font-stretch", @"font-style", @"font-variant", @"font-weight",
+                                  @"direction", @"letter-spacing", @"text-decoration", @"unicode-bidi",
+                                  @"word-spacing", @"clip", @"color", @"cursor",
+                                  @"display", @"overflow’", @"visibility",
+                                  @"clip-path", @"clip-rule", @"mask",
+                                  @"opacity", @"enable-background", @"filter",
+                                  @"flood-color", @"flood-opacity", @"lighting-color",
+                                  @"stop-color", @"stop-opacity", @"pointer-events", @"color-interpolation",
+                                  @"color-interpolation-filters", @"color-profile", @"color-rendering",
+                                  @"fill", @"fill-opacity", @"fill-rule",
+                                  @"image-rendering", @"marker", @"marker-end",
+                                  @"marker-mid", @"marker-start", @"shape-rendering",
+                                  @"stroke", @"stroke-dasharray", @"stroke-dashoffset",
+                                  @"stroke-linecap", @"stroke-linejoin", @"stroke-miterlimit",
+                                  @"stroke-opacity", @"stroke-width", @"text-rendering",
+                                  @"alignment-baseline", @"baseline-shift", @"dominant-baseline",
+                                  @"glyph-orientation-horizontal", @"glyph-orientation-vertical",
+                                  @"kerning", @"text-anchor", @"writing-mode", nil];
+    
+    //
+    // http://www.w3.org/TR/SVG/styling.html#UsingPresentationAttributes
+    // ... In general, this means that the presentation attributes have lower priority than other CSS style rules specified in author style sheets or ‘style’ attributes. ...
+    
+    if ([stylingProperties containsObject:stylableProperty]) {
+        NSString* valueFromStyle = [self cascadedValueForStylablePropertyFromStyle:stylableProperty];
+        
+        if (valueFromStyle != nil) {
+            return valueFromStyle;
         } else {
-            /** we have a locally declared CSS class; let's go hunt for it in the document's stylesheets */
+            return [self getAttribute:stylableProperty];
+        }
+    } else {
+        if ([self hasAttribute:stylableProperty]) {
+            return [self getAttribute:stylableProperty];
+        } else {
+            return [self cascadedValueForStylablePropertyFromStyle:stylableProperty];
+        }
+    }
+}
 
-            @autoreleasepool /** DOM / CSS is insanely verbose, so this is likely to generate a lot of crud objects */ {
+-(NSString*) cascadedValueForStylablePropertyFromStyle:(NSString*) stylableProperty {
+    NSString* localStyleValue = [self.style getPropertyValue:stylableProperty];
+    
+    if (localStyleValue != nil) {
+        return localStyleValue;
+    } else {
+        /** we have a locally declared CSS class; let's go hunt for it in the document's stylesheets */
+        
+        NSString* valueFromStyleSheet = [self cascadedValueForStylablePropertyFromStyleSheet:stylableProperty];
+        
+        if (valueFromStyleSheet != nil) {
+            return valueFromStyleSheet;
+        }
+        
+        /** either there's no class *OR* it found no match for the class in the stylesheets */
+        
+        /** Finally: move up the tree until you find a <G> node, and ask it to provide the value
+         OR: if you find an <SVG> tag before you find a <G> tag, give up
+         */
+        
+        Node* parentElement = self.parentNode;
+        while( parentElement != nil
+              && ! [parentElement isKindOfClass:[SVGGElement class]]
+              && ! [parentElement isKindOfClass:[SVGSVGElement class]])
+        {
+            parentElement = parentElement.parentNode;
+        }
+        
+        if( parentElement == nil || [parentElement isKindOfClass:[SVGSVGElement class]]) {
+            return nil; // give up!
+        } else {
+            return [((SVGElement*)parentElement) cascadedValueForStylableProperty:stylableProperty];
+        }
+    }
+    return nil;
+}
+
+-(NSString*) cascadedValueForStylablePropertyFromStyleSheet:(NSString*) stylableProperty {
+    @autoreleasepool /** DOM / CSS is insanely verbose, so this is likely to generate a lot of crud objects */ {
+        
+        NSMutableArray* appliableRules = [[NSMutableArray alloc] init];
+        
+        for( StyleSheet* genericSheet in self.rootOfCurrentDocumentFragment.styleSheets.internalArray ) // because it's far too much effort to use CSS's low-quality iteration here...
+        {
+            if( [genericSheet isKindOfClass:[CSSStyleSheet class]])
+            {
+                CSSStyleSheet* cssSheet = (CSSStyleSheet*) genericSheet;
                 
-                NSMutableArray* appliableRules = [[NSMutableArray alloc] init];
+                NSArray *classNamesArray = [self.className componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                classNamesArray = [classNamesArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF != ''"]];
                 
-                for( StyleSheet* genericSheet in self.rootOfCurrentDocumentFragment.styleSheets.internalArray ) // because it's far too much effort to use CSS's low-quality iteration here...
-                {
-                    if( [genericSheet isKindOfClass:[CSSStyleSheet class]])
-                    {
-                        CSSStyleSheet* cssSheet = (CSSStyleSheet*) genericSheet;
-                        
-                        NSArray *classNamesArray = [self.className componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-                        classNamesArray = [classNamesArray filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF != ''"]];
-                        
-                        
-                        for (NSString* localClassName in classNamesArray) {
-                            if (localClassName != nil) {
-                                NSArray* rulesFromCache = [cssSheet.classToRulesCache valuesForKey:localClassName];
-                                [appliableRules addObjectsFromArray:rulesFromCache];
-                            }
-                        }
-                        
-                        if (self.identifier != nil) {
-                            [appliableRules addObjectsFromArray:[cssSheet.idToRulesCache valuesForKey:self.identifier]];
-                        }
-
-                        if (self.nodeName != nil) {
-                            [appliableRules addObjectsFromArray:[cssSheet.tagnameToRulesCache valuesForKey:self.nodeName]];
-                        }
-                    }
-                    
-                    CSSStyleRule* prevStyleRule = nil;
-                    NSString* value = nil;
-                    
-                    for (CSSStyleRule* styleRule in appliableRules) {
-                        NSString* currentValue = [styleRule.style getPropertyValue:stylableProperty];
-                        if (currentValue != nil) {
-                            if (prevStyleRule == nil || [prevStyleRule compare:styleRule] == NSOrderedAscending) {
-                                prevStyleRule = styleRule;
-                                value = currentValue;
-                            }
-                            
-                        }
-                    }
-
-                    if (value != nil) {
-                        return value;
+                
+                for (NSString* localClassName in classNamesArray) {
+                    if (localClassName != nil) {
+                        NSArray* rulesFromCache = [cssSheet.classToRulesCache valuesForKey:localClassName];
+                        [appliableRules addObjectsFromArray:rulesFromCache];
                     }
                 }
-			}
-			
-			/** either there's no class *OR* it found no match for the class in the stylesheets */
-			
-			/** Finally: move up the tree until you find a <G> node, and ask it to provide the value
-			 OR: if you find an <SVG> tag before you find a <G> tag, give up
-			 */
-			
-			Node* parentElement = self.parentNode;
-			while( parentElement != nil
-				  && ! [parentElement isKindOfClass:[SVGGElement class]]
-				  && ! [parentElement isKindOfClass:[SVGSVGElement class]])
-			{
-				parentElement = parentElement.parentNode;
-			}
-			
-            if( parentElement == nil || [parentElement isKindOfClass:[SVGSVGElement class]]) {
-				return nil; // give up!
-            } else {
-				return [((SVGElement*)parentElement) cascadedValueForStylableProperty:stylableProperty];
-			}
-		}
-	}
+                
+                if (self.identifier != nil) {
+                    [appliableRules addObjectsFromArray:[cssSheet.idToRulesCache valuesForKey:self.identifier]];
+                }
+                
+                if (self.nodeName != nil) {
+                    [appliableRules addObjectsFromArray:[cssSheet.tagnameToRulesCache valuesForKey:self.nodeName]];
+                }
+            }
+            
+            CSSStyleRule* prevStyleRule = nil;
+            NSString* value = nil;
+            
+            for (CSSStyleRule* styleRule in appliableRules) {
+                NSString* currentValue = [styleRule.style getPropertyValue:stylableProperty];
+                if (currentValue != nil) {
+                    if (prevStyleRule == nil || [prevStyleRule compare:styleRule] == NSOrderedAscending) {
+                        prevStyleRule = styleRule;
+                        value = currentValue;
+                    }
+                    
+                }
+            }
+            
+            if (value != nil) {
+                return value;
+            }
+        }
+    }
+    return nil;
 }
+
 
 @end
