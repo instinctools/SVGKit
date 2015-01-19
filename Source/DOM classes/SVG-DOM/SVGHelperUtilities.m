@@ -311,6 +311,8 @@
 {
 	CAShapeLayer* _shapeLayer = [[CAShapeLayerWithHitTest layer] retain];
 	
+    _shapeLayer.name = svgElement.identifier;
+    
 	[self configureCALayer:_shapeLayer usingElement:svgElement];
 	
 	/** transform our LOCAL path into ABSOLUTE space */
