@@ -369,6 +369,30 @@
 			strokeColorAsSVGColor.a = (uint8_t) ([actualStrokeOpacity floatValue] * 0xFF);
 		
 		_shapeLayer.strokeColor = CGColorWithSVGColor( strokeColorAsSVGColor );
+        
+        NSString *dashArrayString = [svgElement cascadedValueForStylableProperty:@"stroke-dasharray"];
+        if (dashArrayString != nil && ![dashArrayString isEqualToString:@""]) {
+            NSArray *dashArrayStringComponents = [dashArrayString componentsSeparatedByString:@" "];
+            if ([dashArrayStringComponents count] < 2) {
+                dashArrayStringComponents = [dashArrayString componentsSeparatedByString:@","];
+            }
+            
+            if ([dashArrayStringComponents count] > 1) {
+                BOOL valid = NO;
+                NSMutableArray *dashArray = [[NSMutableArray alloc] init];
+                
+                for (NSString *n in dashArrayStringComponents) {
+                    [dashArray addObject:[NSNumber numberWithFloat:[n floatValue]]];
+
+                    if( !valid && [n floatValue] != 0 ){
+                        valid = YES;
+                    }
+                }
+                if( valid ){
+                    _shapeLayer.lineDashPattern = dashArray;
+                }
+            }
+        }
 		
 		/**
 		 Line joins + caps: butt / square / miter
